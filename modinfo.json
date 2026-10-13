@@ -6,8 +6,8 @@
     "authors": [
         "SaladrineScripts"
     ],
-    "description": "Plan: Makes permadeath into an interesting system with meta progression. When you die your inventory will be turned into a chest that could be found in future worlds and Your bases will be added into the spawn pool for structures. Currently: Makes a file with your inventory in it with the command /createecho file name is effected by deathcount number. Makes a file with your deathcount with the command /countechos. Increase deathcount with /incrementdeathcount.",
-    "version": "1.4.0",
+    "description": "Plan: Makes permadeath into an interesting system with meta progression. When you die your inventory will be turned into a chest that could be found in future worlds and Your bases will be added into the spawn pool for structures. Currently: Makes a file with your inventory in it with the command /createecho file name is effected by deathcount number. Makes a file with your deathcount with the command /countechos. Increase deathcount with /incrementdeathcount. And increase deathcount and make DeadDropChest file on player death.",
+    "version": "1.5.0",
     "dependencies": {
         "game": "1.22.0"
     }
