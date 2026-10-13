@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,6 +12,10 @@ using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 using System.Collections;
 using System.Security.AccessControl;
+using System.Drawing;
+using System.Reflection;
+using System.Text.RegularExpressions;
+using Vintagestory.API.Common.Entities;
 //using Vintagestory.GameContent.Mechanics;
 
 namespace Echos_of_Samsara;
@@ -25,18 +29,19 @@ public class Echos_of_SamsaraModSystem : ModSystem
     v1.1 Make a death count variable that persists between worlds.
     v1.2 Increment death count by command.
     v1.3 Have different file names based on death number.
-
     v1.4 Increment death count on death and refactor code.
-    v2.0 Save list of items in player inventory on death.
-    v2.1 Add a single empty chest to structure list
-    v2.2 Spawn items from dead drop list in chest on spawn.
-    v2.3 Limit dead drop chest to one spawn per chest.
+    v1.5 Save list of items in player inventory on death.
+    
+    v2.0 Add a single empty chest to structure list
+    v2.1 Spawn items from dead drop list in chest on spawn.
+    v2.2 Limit dead drop chest to one spawn per chest.
     v3.0 Make save file with player placed items.
-    v4.0 Spawn player made base with loot
-    v5.0 Spawn player made bases with structure and loot errosion
-    v6.0 Expand system to work with a multiplayer server.
-    v7.0 Add karma system
-    v8.0 Add vengful ghost system.
+    v3.1 Spawn player made base with loot
+    v4.0 Spawn player made bases with structure errosion
+    v4.1 Spawn player made bases with Loot errosion
+    v5.0 Expand system to work with a multiplayer server.
+    v6.0 Add karma system
+    v7.0 Add vengful ghost system.
     */
     public String PersistantFile = "EchoData.json";
 
@@ -66,7 +71,7 @@ public class Echos_of_SamsaraModSystem : ModSystem
 
     //public override bool ShouldLoad(EnumAppSide forSide) => forSide == EnumAppSide.Server;
 
-/*
+
     private void OnEntityDeath(Entity entity, DamageSource damageSource)
     {
         if (entity is EntityPlayer entityPlayer)
@@ -78,20 +83,20 @@ public class Echos_of_SamsaraModSystem : ModSystem
     private void OnPlayerDeath(IServerPlayer byplayer)
     {
         //Create chest file for the current life
+        CreatePlayerEcho(byplayer);
         //Increment death count
-        //ICoreServerAPI api = args.Caller.Player.Entity.Api as ICoreServerAPI;
-        //VerifyEchoData(args);
-        //EchosOfSamsaraData EchoData = api.LoadModConfig<EchosOfSamsaraData>(PersistantFile);
-        //EchoData.DeathCount ++;
+        VerifyEchoData();
+        EchosOfSamsaraData EchoData = _sapi.LoadModConfig<EchosOfSamsaraData>(PersistantFile);
+        EchoData.DeathCount ++;
 
-        //args.Caller.Player.Entity.Api.StoreModConfig(EchoData, PersistantFile);
+        _sapi.StoreModConfig(EchoData, PersistantFile);
 
     }
-*/
+
     public override void StartServerSide(ICoreServerAPI api)
     {
         _sapi = api;
-        //_sapi.Event.OnEntityDeath += OnEntityDeath;
+        _sapi.Event.OnEntityDeath += OnEntityDeath;
         Mod.Logger.Notification("Welcome back to the cycle. Leave your mark.");
         _sapi.ChatCommands.Create("CreateEcho")
             .WithDescription("Export inventory into a DeadDropChest.")
@@ -122,12 +127,11 @@ public class Echos_of_SamsaraModSystem : ModSystem
 
     private TextCommandResult OnIncrementDeathCount(TextCommandCallingArgs args)
     {
-        ICoreServerAPI api = args.Caller.Player.Entity.Api as ICoreServerAPI;
-        VerifyEchoData(args);
-        EchosOfSamsaraData EchoData = api.LoadModConfig<EchosOfSamsaraData>(PersistantFile);
+        VerifyEchoData();
+        EchosOfSamsaraData EchoData = _sapi.LoadModConfig<EchosOfSamsaraData>(PersistantFile);
         EchoData.DeathCount ++;
 
-        args.Caller.Player.Entity.Api.StoreModConfig(EchoData, PersistantFile);
+        _sapi.StoreModConfig(EchoData, PersistantFile);
         
         return TextCommandResult.Success(
             $"Echo Complete.\n" +
@@ -135,7 +139,7 @@ public class Echos_of_SamsaraModSystem : ModSystem
         );
     }
 
-    private void VerifyEchoData(TextCommandCallingArgs args)
+    private void VerifyEchoData()
     {
         //ICoreServerAPI api = args.Caller.Player.Entity.Api as ICoreServerAPI;
         
@@ -154,14 +158,14 @@ public class Echos_of_SamsaraModSystem : ModSystem
     }
     private TextCommandResult OnExportDeathCount(TextCommandCallingArgs args)// Update death count
     {
-        ICoreServerAPI api = args.Caller.Player.Entity.Api as ICoreServerAPI;
+        //ICoreServerAPI api = args.Caller.Player.Entity.Api as ICoreServerAPI;
 
-        VerifyEchoData(args);
+        VerifyEchoData();
         
         
-        EchosOfSamsaraData EchoData = api.LoadModConfig<EchosOfSamsaraData>(PersistantFile);
+        EchosOfSamsaraData EchoData = _sapi.LoadModConfig<EchosOfSamsaraData>(PersistantFile);
         
-        args.Caller.Player.Entity.Api.StoreModConfig(EchoData, PersistantFile);
+        _sapi.StoreModConfig(EchoData, PersistantFile);
         
         return TextCommandResult.Success(
             $"Echo Complete.\n" +
@@ -171,7 +175,11 @@ public class Echos_of_SamsaraModSystem : ModSystem
     private TextCommandResult OnExportEcho(TextCommandCallingArgs args) //Exports inventory save file
     {
         IServerPlayer player = args.Caller.Player as IServerPlayer;
-        ICoreServerAPI api = args.Caller.Player.Entity.Api as ICoreServerAPI;
+        return CreatePlayerEcho(player);
+    }
+    private TextCommandResult CreatePlayerEcho(IServerPlayer player)
+    {
+        
         if(player.WorldData.CurrentGameMode == EnumGameMode.Creative)
         {
             return TextCommandResult.Error("Echo Fades: Creative mode surpasses the limits of reincarnation try again in survival.");
@@ -185,7 +193,7 @@ public class Echos_of_SamsaraModSystem : ModSystem
 
         Stack<ItemSlot> allSlots = new Stack<ItemSlot>();
 
-        // Extract hotbar character and mouse inventoryies
+        // Extract hotbar character and mouse inventories
 
         string[] targetInvIds = { "hotbar", "character", "mouse"};
         foreach (string Id in targetInvIds)
@@ -281,13 +289,13 @@ public class Echos_of_SamsaraModSystem : ModSystem
         DDData.ChestID = Guid.NewGuid().ToString("N");
 
 
-        VerifyEchoData(args);
-        EchosOfSamsaraData EchoData = api.LoadModConfig<EchosOfSamsaraData>(PersistantFile);
+        VerifyEchoData();
+        EchosOfSamsaraData EchoData = _sapi.LoadModConfig<EchosOfSamsaraData>(PersistantFile);
         
         string ExportPathPrefix = "DeadDropChest";
         string ExportPathSuffix = ".json";
         string exportFile = ExportPathPrefix + EchoData.DeathCount.ToString() + ExportPathSuffix;
-        args.Caller.Player.Entity.Api.StoreModConfig(DDData, exportFile);
+        _sapi.StoreModConfig(DDData, exportFile);
         
         return TextCommandResult.Success(
             $"Echo Complete.\n" +
