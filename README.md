@@ -14,6 +14,8 @@ A Vintage Story mod that adds progress from permadeath worlds to future worlds.
   v1.4 Increment death count on death and refactor code.
   
   v1.5 Save list of items in player inventory on death.
+
+Currently Here
   
   v2.0 Add a single empty chest to structure list
   
